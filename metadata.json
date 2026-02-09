@@ -1,0 +1,5 @@
+{
+  "name": "Student Knowledge Gap Detection Platform (SKGDP)",
+  "description": "A comprehensive platform that identifies student learning deficiencies through diagnostic tests and provides AI-powered remedial resource suggestions and analytics.",
+  "requestFramePermissions": []
+}
