@@ -27,22 +27,22 @@ export interface User {
 }
 
 export interface Course {
-  id: number;
+  id: string;
   title: string;
   description: string;
   code: string;
-  facultyId: number;
+  facultyId: string;
 }
 
 export interface Topic {
-  id: number;
+  id: string;
   name: string;
-  courseId: number;
+  courseId: string;
 }
 
 export interface Question {
-  id: number;
-  topicId: number;
+  id: string;
+  topicId: string;
   content: string;
   optionA: string;
   optionB: string;
@@ -53,8 +53,8 @@ export interface Question {
 }
 
 export interface Assignment {
-  id: number;
-  topicId: number;
+  id: string;
+  topicId: string;
   studentId: string;
   assignedBy: string;
   assignedAt: string;
@@ -66,7 +66,7 @@ export interface AssessmentResult {
   maxScore: number;
   percentage: number;
   breakdown: {
-    topicId: number;
+    topicId: string;
     topicName: string;
     correct: number;
     total: number;
@@ -77,16 +77,16 @@ export interface AssessmentResult {
 }
 
 export interface KnowledgeGap {
-  id: number;
+  id: string;
   studentId: string;
-  topicId: number;
+  topicId: string;
   weaknessScore: number;
   detectedAt: string;
 }
 
 export interface Recommendation {
-  id: number;
-  topicId: number;
+  id: string;
+  topicId: string;
   url: string;
   description: string;
   type: RecommendationType;

@@ -2,13 +2,13 @@ package com.skgdp.repository;
 
 import com.skgdp.entity.Topic;
 import com.skgdp.entity.Course;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface TopicRepository extends JpaRepository<Topic, Long> {
-  List<Topic> findByCourse(Course course);
+public interface TopicRepository extends MongoRepository<Topic, String> {
+    List<Topic> findByCourse(Course course);
 
-  List<Topic> findByCourseId(Long courseId);
+    List<Topic> findByCourseId(String courseId);
 }

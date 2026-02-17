@@ -1,38 +1,34 @@
 package com.skgdp.entity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.index.Indexed;
 import lombok.*;
 
-@Entity
-@Table(name = "users")
+@Document(collection = "users")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class User {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    private String id;
 
-  @Column(unique = true, nullable = false)
-  private String email;
+    @Indexed(unique = true)
+    private String email;
 
-  @Column(nullable = false)
-  private String password;
+    private String password;
 
-  @Column(name = "full_name", nullable = false)
-  private String fullName;
+    private String fullName;
 
-  @Column(name = "roll_number", unique = true)
-  private String rollNumber;
+    @Indexed(unique = true, sparse = true)
+    private String rollNumber;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private Role role;
+    private Role role;
 
-  private String avatar;
+    private String avatar;
 
-  public enum Role {
-    STUDENT, FACULTY, ADMIN
-  }
+    public enum Role {
+        STUDENT, FACULTY, ADMIN
+    }
 }

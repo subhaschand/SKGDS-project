@@ -7,15 +7,15 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AssessmentSubmissionDTO {
-  private Long courseId;
-  private Long studentId;
+  private String courseId;
+  private String studentId;
   private List<AnswerDTO> answers;
 
   @Data
   @NoArgsConstructor
   @AllArgsConstructor
   public static class AnswerDTO {
-    private Long questionId;
+    private String questionId;
     private String selectedOption;
   }
 }

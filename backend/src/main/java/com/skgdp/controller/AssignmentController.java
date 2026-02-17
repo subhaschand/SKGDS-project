@@ -19,12 +19,12 @@ public class AssignmentController {
   @PostMapping("/assign")
   public ResponseEntity<?> assignTest(@RequestBody Map<String, Object> request) {
     try {
-      Long topicId = Long.valueOf(request.get("topicId").toString());
+      String topicId = request.get("topicId").toString();
       @SuppressWarnings("unchecked")
-      List<Long> studentIds = ((List<Number>) request.get("studentIds")).stream()
-          .map(Number::longValue)
+      List<String> studentIds = ((List<?>) request.get("studentIds")).stream()
+          .map(Object::toString)
           .toList();
-      Long facultyId = Long.valueOf(request.get("facultyId").toString());
+      String facultyId = request.get("facultyId").toString();
 
       List<AssignmentDTO> assignments = assignmentService.assignTest(topicId, studentIds, facultyId);
       return ResponseEntity.ok(assignments);
@@ -34,17 +34,17 @@ public class AssignmentController {
   }
 
   @GetMapping("/student/{studentId}")
-  public ResponseEntity<List<AssignmentDTO>> getStudentAssignments(@PathVariable Long studentId) {
+  public ResponseEntity<List<AssignmentDTO>> getStudentAssignments(@PathVariable String studentId) {
     return ResponseEntity.ok(assignmentService.getStudentAssignments(studentId));
   }
 
   @GetMapping("/student/{studentId}/pending")
-  public ResponseEntity<List<AssignmentDTO>> getPendingAssignments(@PathVariable Long studentId) {
+  public ResponseEntity<List<AssignmentDTO>> getPendingAssignments(@PathVariable String studentId) {
     return ResponseEntity.ok(assignmentService.getPendingAssignments(studentId));
   }
 
   @PutMapping("/{id}/complete")
-  public ResponseEntity<?> completeAssignment(@PathVariable Long id) {
+  public ResponseEntity<?> completeAssignment(@PathVariable String id) {
     try {
       AssignmentDTO assignment = assignmentService.completeAssignment(id);
       return ResponseEntity.ok(assignment);
@@ -54,7 +54,7 @@ public class AssignmentController {
   }
 
   @PutMapping("/complete")
-  public ResponseEntity<?> completeByTopicAndStudent(@RequestBody Map<String, Long> request) {
+  public ResponseEntity<?> completeByTopicAndStudent(@RequestBody Map<String, String> request) {
     try {
       assignmentService.completeByTopicAndStudent(request.get("topicId"), request.get("studentId"));
       return ResponseEntity.ok(Map.of("message", "Assignment completed"));

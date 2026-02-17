@@ -20,7 +20,7 @@ public class AssessmentResultDTO {
   @AllArgsConstructor
   @Builder
   public static class TopicBreakdown {
-    private Long topicId;
+    private String topicId;
     private String topicName;
     private int correct;
     private int total;
@@ -32,9 +32,9 @@ public class AssessmentResultDTO {
   @AllArgsConstructor
   @Builder
   public static class GapDTO {
-    private Long id;
-    private Long studentId;
-    private Long topicId;
+    private String id;
+    private String studentId;
+    private String topicId;
     private double weaknessScore;
     private String detectedAt;
   }
@@ -44,8 +44,8 @@ public class AssessmentResultDTO {
   @AllArgsConstructor
   @Builder
   public static class RecommendationDTO {
-    private Long id;
-    private Long topicId;
+    private String id;
+    private String topicId;
     private String url;
     private String description;
     private String type;

@@ -8,11 +8,11 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class CourseDTO {
-  private Long id;
+  private String id;
   private String title;
   private String description;
   private String code;
-  private Long facultyId;
+  private String facultyId;
 
   public static CourseDTO fromEntity(Course course) {
     return CourseDTO.builder()

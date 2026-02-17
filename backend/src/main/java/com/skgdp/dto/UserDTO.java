@@ -8,7 +8,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class UserDTO {
-  private Long id;
+  private String id;
   private String email;
   private String fullName;
   private String rollNumber;

@@ -27,7 +27,7 @@ public class AssessmentController {
   }
 
   @GetMapping("/gaps/{studentId}")
-  public ResponseEntity<List<AssessmentResultDTO.GapDTO>> getStudentGaps(@PathVariable Long studentId) {
+  public ResponseEntity<List<AssessmentResultDTO.GapDTO>> getStudentGaps(@PathVariable String studentId) {
     List<AssessmentResultDTO.GapDTO> gaps = gapDetectionService.getStudentGaps(studentId);
     return ResponseEntity.ok(gaps);
   }

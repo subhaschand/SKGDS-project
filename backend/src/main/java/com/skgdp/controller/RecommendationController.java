@@ -26,7 +26,7 @@ public class RecommendationController {
   }
 
   @GetMapping("/topic/{topicId}")
-  public ResponseEntity<List<Map<String, Object>>> getByTopic(@PathVariable Long topicId) {
+  public ResponseEntity<List<Map<String, Object>>> getByTopic(@PathVariable String topicId) {
     List<Map<String, Object>> recs = recRepo.findByTopicId(topicId).stream()
         .map(this::toMap)
         .collect(Collectors.toList());

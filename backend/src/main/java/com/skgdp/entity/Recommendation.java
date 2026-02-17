@@ -1,34 +1,29 @@
 package com.skgdp.entity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import lombok.*;
 
-@Entity
-@Table(name = "recommendations")
+@Document(collection = "recommendations")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Recommendation {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    private String id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "topic_id", nullable = false)
-  private Topic topic;
+    @DBRef
+    private Topic topic;
 
-  @Column(nullable = false)
-  private String url;
+    private String url;
 
-  @Column(columnDefinition = "TEXT")
-  private String description;
+    private String description;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private Type type;
+    private Type type;
 
-  public enum Type {
-    VIDEO, ARTICLE
-  }
+    public enum Type {
+        VIDEO, ARTICLE
+    }
 }

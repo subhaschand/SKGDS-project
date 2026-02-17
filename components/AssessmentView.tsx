@@ -19,10 +19,14 @@ const AssessmentView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const tId = parseInt(topicId || '0');
+  const tId = topicId || '';
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!tId) {
+        setLoading(false);
+        return;
+      }
       try {
         const [topicData, questionsData] = await Promise.all([
           topicsAPI.getById(tId),
@@ -106,19 +110,19 @@ const AssessmentView: React.FC = () => {
     
     try {
       const formattedAnswers = Object.entries(answers).map(([qId, opt]) => ({
-        questionId: parseInt(qId),
+        questionId: qId,
         selectedOption: opt as string
       }));
       
       const evaluation = await assessmentAPI.submit({
         courseId: topic.courseId,
-        studentId: parseInt(user.id),
+        studentId: user.id,
         answers: formattedAnswers,
       });
       
       // Also complete assignment in backend
       try {
-        await assignmentsAPI.complete(topic.id, parseInt(user.id));
+        await assignmentsAPI.complete(topic.id, user.id);
       } catch {
         // Assignment may not exist, that's ok
       }
