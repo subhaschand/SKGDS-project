@@ -1,40 +1,34 @@
 package com.skgdp.entity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import lombok.*;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "assignments")
+@Document(collection = "assignments")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Assignment {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    private String id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "topic_id", nullable = false)
-  private Topic topic;
+    @DBRef
+    private Topic topic;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "student_id", nullable = false)
-  private User student;
+    @DBRef
+    private User student;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "assigned_by")
-  private User assignedBy;
+    @DBRef
+    private User assignedBy;
 
-  @Column(name = "assigned_at", nullable = false)
-  private LocalDateTime assignedAt;
+    private LocalDateTime assignedAt;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private Status status;
+    private Status status;
 
-  public enum Status {
-    PENDING, COMPLETED
-  }
+    public enum Status {
+        PENDING, COMPLETED
+    }
 }

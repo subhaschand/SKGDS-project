@@ -1,9 +1,9 @@
 
 import React, { useState, useContext, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TOPICS, QUESTIONS, STUDENTS } from '../services/mockData';
-import { topicsAPI, questionsAPI, usersAPI, assignmentsAPI } from '../services/api';
-import { Difficulty, Question, Topic, User } from '../types';
+import { TOPICS, QUESTIONS, STUDENTS, COURSES } from '../services/mockData';
+import { topicsAPI, questionsAPI, usersAPI, assignmentsAPI, QuestionCreateData, coursesAPI, CourseCreateData } from '../services/api';
+import { Difficulty, Question, Topic, User, Course } from '../types';
 import { AuthContext } from '../App';
 
 const CLASS_STATS = [
@@ -15,6 +15,7 @@ const CLASS_STATS = [
 
 const FacultyDashboard: React.FC = () => {
   const { user, assignTest, assignments } = useContext(AuthContext);
+  const [localCourses, setLocalCourses] = useState<Course[]>(COURSES);
   const [localTopics, setLocalTopics] = useState<Topic[]>(TOPICS);
   const [localQuestions, setLocalQuestions] = useState<Question[]>(QUESTIONS);
   const [students, setStudents] = useState<User[]>(STUDENTS);
@@ -24,8 +25,10 @@ const FacultyDashboard: React.FC = () => {
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
   const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isCourseModalOpen, setIsCourseModalOpen] = useState(false);
   
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [selectedTopicForAssign, setSelectedTopicForAssign] = useState<Topic | null>(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   
@@ -41,17 +44,34 @@ const FacultyDashboard: React.FC = () => {
     optionD: ''
   });
 
+  // Course Form State
+  const [courseFormData, setCourseFormData] = useState<Partial<Course>>({
+    title: '',
+    description: '',
+    code: ''
+  });
+
   const [newTopicName, setNewTopicName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Fetch data from API on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [topicsData, questionsData, studentsData] = await Promise.all([
+        const [coursesData, topicsData, questionsData, studentsData] = await Promise.all([
+          coursesAPI.getAll(),
           topicsAPI.getAll(),
           questionsAPI.getAll(),
           usersAPI.getStudents(),
         ]);
+        
+        setLocalCourses(coursesData.map(c => ({
+          id: c.id,
+          title: c.title,
+          description: c.description,
+          code: c.code,
+          facultyId: c.facultyId,
+        })));
         
         setLocalTopics(topicsData.map(t => ({
           id: t.id,
@@ -72,7 +92,7 @@ const FacultyDashboard: React.FC = () => {
         })));
         
         setStudents(studentsData.map(s => ({
-          id: s.id.toString(),
+          id: s.id,
           email: s.email,
           fullName: s.fullName,
           rollNumber: s.rollNumber,
@@ -90,7 +110,7 @@ const FacultyDashboard: React.FC = () => {
     fetchData();
   }, []);
 
-  const openAddQuestionModal = (topicId?: number) => {
+  const openAddQuestionModal = (topicId?: string) => {
     setEditingQuestion(null);
     setQuestionFormData({
       topicId: topicId || localTopics[0]?.id,
@@ -111,6 +131,75 @@ const FacultyDashboard: React.FC = () => {
     setIsAssignModalOpen(true);
   };
 
+  const openAddCourseModal = () => {
+    setEditingCourse(null);
+    setCourseFormData({ title: '', description: '', code: '' });
+    setIsCourseModalOpen(true);
+  };
+
+  const openEditCourseModal = (course: Course) => {
+    setEditingCourse(course);
+    setCourseFormData({ title: course.title, description: course.description, code: course.code });
+    setIsCourseModalOpen(true);
+  };
+
+  const handleSaveCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    
+    try {
+      const courseData: CourseCreateData = {
+        title: courseFormData.title!,
+        description: courseFormData.description!,
+        code: courseFormData.code!,
+        facultyId: user?.id,
+      };
+      
+      if (editingCourse) {
+        const updated = await coursesAPI.update(editingCourse.id, courseData);
+        setLocalCourses(localCourses.map(c => 
+          c.id === editingCourse.id 
+            ? { id: updated.id, title: updated.title, description: updated.description, code: updated.code, facultyId: updated.facultyId }
+            : c
+        ));
+      } else {
+        const newCourse = await coursesAPI.create(courseData);
+        setLocalCourses([...localCourses, { 
+          id: newCourse.id, 
+          title: newCourse.title, 
+          description: newCourse.description, 
+          code: newCourse.code, 
+          facultyId: newCourse.facultyId 
+        }]);
+      }
+      
+      setIsCourseModalOpen(false);
+      alert(editingCourse ? 'Repository updated successfully!' : 'Repository created successfully!');
+    } catch (error) {
+      console.error('Failed to save course:', error);
+      alert('Failed to save repository. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteCourse = async (courseId: string) => {
+    if (!confirm('Are you sure you want to delete this repository? All topics and questions within it will also be deleted.')) return;
+    
+    try {
+      await coursesAPI.delete(courseId);
+      setLocalCourses(localCourses.filter(c => c.id !== courseId));
+      // Also remove related topics and questions from local state
+      const topicIds = localTopics.filter(t => t.courseId === courseId).map(t => t.id);
+      setLocalTopics(localTopics.filter(t => t.courseId !== courseId));
+      setLocalQuestions(localQuestions.filter(q => !topicIds.includes(q.topicId)));
+      alert('Repository deleted successfully!');
+    } catch (error) {
+      console.error('Failed to delete course:', error);
+      alert('Failed to delete repository. Please try again.');
+    }
+  };
+
   const toggleStudentSelection = (id: string) => {
     setSelectedStudentIds(prev => 
       prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
@@ -123,8 +212,8 @@ const FacultyDashboard: React.FC = () => {
         // Call backend API
         await assignmentsAPI.assign(
           selectedTopicForAssign.id, 
-          selectedStudentIds.map(id => parseInt(id)),
-          parseInt(user.id)
+          selectedStudentIds,
+          user.id
         );
       } catch (error) {
         console.error('Failed to assign via API:', error);
@@ -137,19 +226,78 @@ const FacultyDashboard: React.FC = () => {
     }
   };
 
-  const handleSaveQuestion = (e: React.FormEvent) => {
+  const handleSaveQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingQuestion) {
-      setLocalQuestions(localQuestions.map(q => q.id === editingQuestion.id ? { ...questionFormData, id: q.id } as Question : q));
-    } else {
-      const questionToSave: Question = {
-        ...questionFormData,
-        id: Math.max(0, ...localQuestions.map(q => q.id)) + 1,
-      } as Question;
-      setLocalQuestions([...localQuestions, questionToSave]);
+    setIsSaving(true);
+    
+    try {
+      const questionData: QuestionCreateData = {
+        topicId: questionFormData.topicId!,
+        content: questionFormData.content!,
+        optionA: questionFormData.optionA!,
+        optionB: questionFormData.optionB!,
+        optionC: questionFormData.optionC!,
+        optionD: questionFormData.optionD!,
+        correctOption: questionFormData.correctOption!,
+        difficulty: questionFormData.difficulty!,
+      };
+      
+      if (editingQuestion) {
+        // Update existing question via API
+        const updatedQuestion = await questionsAPI.update(editingQuestion.id, questionData);
+        setLocalQuestions(localQuestions.map(q => 
+          q.id === editingQuestion.id 
+            ? {
+                id: updatedQuestion.id,
+                topicId: updatedQuestion.topicId,
+                content: updatedQuestion.content,
+                optionA: updatedQuestion.optionA,
+                optionB: updatedQuestion.optionB,
+                optionC: updatedQuestion.optionC,
+                optionD: updatedQuestion.optionD,
+                correctOption: (updatedQuestion.correctOption || 'A') as 'A' | 'B' | 'C' | 'D',
+                difficulty: updatedQuestion.difficulty as Difficulty,
+              }
+            : q
+        ));
+      } else {
+        // Create new question via API
+        const newQuestion = await questionsAPI.create(questionData);
+        const mappedQuestion: Question = {
+          id: newQuestion.id,
+          topicId: newQuestion.topicId,
+          content: newQuestion.content,
+          optionA: newQuestion.optionA,
+          optionB: newQuestion.optionB,
+          optionC: newQuestion.optionC,
+          optionD: newQuestion.optionD,
+          correctOption: (newQuestion.correctOption || 'A') as 'A' | 'B' | 'C' | 'D',
+          difficulty: newQuestion.difficulty as Difficulty,
+        };
+        setLocalQuestions([...localQuestions, mappedQuestion]);
+      }
+      
+      setIsQuestionModalOpen(false);
+      alert(editingQuestion ? 'Question updated successfully!' : 'Question added successfully!');
+    } catch (error) {
+      console.error('Failed to save question:', error);
+      alert('Failed to save question. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
-    setIsQuestionModalOpen(true);
-    setIsQuestionModalOpen(false);
+  };
+
+  const handleDeleteQuestion = async (questionId: string) => {
+    if (!confirm('Are you sure you want to delete this question?')) return;
+    
+    try {
+      await questionsAPI.delete(questionId);
+      setLocalQuestions(localQuestions.filter(q => q.id !== questionId));
+      alert('Question deleted successfully!');
+    } catch (error) {
+      console.error('Failed to delete question:', error);
+      alert('Failed to delete question. Please try again.');
+    }
   };
 
   return (
@@ -220,6 +368,96 @@ const FacultyDashboard: React.FC = () => {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* PRACTICE REPOSITORY BANKS */}
+      <section className="space-y-8">
+        <div className="flex items-center justify-between px-2">
+          <h2 className="text-2xl font-black text-gray-900 flex items-center gap-4">
+            <i className="fas fa-book-open text-blue-600"></i>
+            Practice Repository Banks
+            <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-black rounded-xl uppercase tracking-widest">
+              Auto-mapped to all students
+            </span>
+          </h2>
+          <button 
+            onClick={openAddCourseModal}
+            className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-sm hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all flex items-center gap-2"
+          >
+            <i className="fas fa-plus"></i>
+            Add Repository
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {localCourses.map(course => {
+            const courseTopics = localTopics.filter(t => t.courseId === course.id);
+            const courseQuestionCount = courseTopics.reduce((acc, topic) => 
+              acc + localQuestions.filter(q => q.topicId === topic.id).length, 0
+            );
+            
+            return (
+              <div key={course.id} className="bg-white rounded-[2rem] border-2 border-gray-100 overflow-hidden hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 group">
+                <div className="p-8">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="px-4 py-2 bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-[0.15em] rounded-xl border border-blue-100">
+                      {course.code}
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => openEditCourseModal(course)}
+                        className="w-10 h-10 rounded-xl bg-gray-50 text-gray-400 hover:bg-indigo-100 hover:text-indigo-600 flex items-center justify-center transition-all"
+                        title="Edit Repository"
+                      >
+                        <i className="fas fa-pen text-sm"></i>
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteCourse(course.id)}
+                        className="w-10 h-10 rounded-xl bg-gray-50 text-gray-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-all"
+                        title="Delete Repository"
+                      >
+                        <i className="fas fa-trash text-sm"></i>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <h3 className="text-xl font-black text-gray-800 mb-2 tracking-tight">{course.title}</h3>
+                  <p className="text-gray-400 text-sm font-medium mb-6 line-clamp-2">{course.description}</p>
+                  
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <i className="fas fa-layer-group text-xs"></i>
+                      </div>
+                      <span className="font-bold text-gray-600">{courseTopics.length} Topics</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center">
+                        <i className="fas fa-question text-xs"></i>
+                      </div>
+                      <span className="font-bold text-gray-600">{courseQuestionCount} Questions</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 px-4 py-3 bg-green-50 rounded-xl border border-green-100">
+                    <i className="fas fa-users text-green-600"></i>
+                    <span className="text-xs font-black text-green-700 uppercase tracking-wider">
+                      Available to {students.length} Students
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          
+          {localCourses.length === 0 && (
+            <div className="col-span-full py-16 text-center text-gray-400">
+              <i className="fas fa-folder-open text-5xl mb-4 opacity-50"></i>
+              <p className="font-bold text-lg">No practice repositories yet</p>
+              <p className="text-sm">Create your first repository to get started</p>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* TOPIC-BASED QUESTION BANKS */}
       <section className="space-y-8">
@@ -302,8 +540,16 @@ const FacultyDashboard: React.FC = () => {
                             <button 
                               onClick={() => { setEditingQuestion(q); setQuestionFormData(q); setIsQuestionModalOpen(true); }}
                               className="text-gray-300 hover:text-indigo-600 p-2 transition-all"
+                              title="Edit Question"
                             >
                               <i className="fas fa-sliders text-lg"></i>
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteQuestion(q.id)}
+                              className="text-gray-300 hover:text-red-600 p-2 transition-all ml-2"
+                              title="Delete Question"
+                            >
+                              <i className="fas fa-trash text-lg"></i>
                             </button>
                           </td>
                         </tr>
@@ -413,7 +659,7 @@ const FacultyDashboard: React.FC = () => {
                   <select 
                     className="w-full p-5 bg-white border-2 border-gray-100 rounded-2xl focus:border-indigo-600 outline-none font-bold text-gray-800 transition-all"
                     value={questionFormData.topicId}
-                    onChange={e => setQuestionFormData({...questionFormData, topicId: parseInt(e.target.value)})}
+                    onChange={e => setQuestionFormData({...questionFormData, topicId: e.target.value})}
                     required
                   >
                     {localTopics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -480,9 +726,10 @@ const FacultyDashboard: React.FC = () => {
 
               <button 
                 type="submit"
-                className="w-full bg-indigo-900 text-white py-6 rounded-[2rem] font-black text-xl hover:bg-indigo-700 shadow-2xl shadow-indigo-100 transition-all active:scale-95 mt-4"
+                disabled={isSaving}
+                className="w-full bg-indigo-900 text-white py-6 rounded-[2rem] font-black text-xl hover:bg-indigo-700 shadow-2xl shadow-indigo-100 transition-all active:scale-95 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {editingQuestion ? 'Deploy Updates' : 'Add to Repository'}
+                {isSaving ? 'Saving...' : (editingQuestion ? 'Deploy Updates' : 'Add to Repository')}
               </button>
             </form>
           </div>

@@ -8,9 +8,9 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class TopicDTO {
-  private Long id;
+  private String id;
   private String name;
-  private Long courseId;
+  private String courseId;
 
   public static TopicDTO fromEntity(Topic topic) {
     return TopicDTO.builder()

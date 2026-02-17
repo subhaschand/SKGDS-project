@@ -25,7 +25,7 @@ public class TopicController {
   }
 
   @GetMapping("/course/{courseId}")
-  public ResponseEntity<List<TopicDTO>> getTopicsByCourse(@PathVariable Long courseId) {
+  public ResponseEntity<List<TopicDTO>> getTopicsByCourse(@PathVariable String courseId) {
     List<TopicDTO> topics = topicRepo.findByCourseId(courseId).stream()
         .map(TopicDTO::fromEntity)
         .collect(Collectors.toList());
@@ -33,7 +33,7 @@ public class TopicController {
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<TopicDTO> getTopic(@PathVariable Long id) {
+  public ResponseEntity<TopicDTO> getTopic(@PathVariable String id) {
     return topicRepo.findById(id)
         .map(TopicDTO::fromEntity)
         .map(ResponseEntity::ok)

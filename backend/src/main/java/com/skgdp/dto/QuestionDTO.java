@@ -8,8 +8,8 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class QuestionDTO {
-  private Long id;
-  private Long topicId;
+  private String id;
+  private String topicId;
   private String content;
   private String optionA;
   private String optionB;

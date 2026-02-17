@@ -1,31 +1,27 @@
 package com.skgdp.entity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import lombok.*;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "assessments")
+@Document(collection = "assessments")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Assessment {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    private String id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "student_id", nullable = false)
-  private User student;
+    @DBRef
+    private User student;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "course_id", nullable = false)
-  private Course course;
+    @DBRef
+    private Course course;
 
-  @Column(nullable = false)
-  private Double score;
+    private Double score;
 
-  @Column(name = "submission_date", nullable = false)
-  private LocalDateTime submissionDate;
+    private LocalDateTime submissionDate;
 }

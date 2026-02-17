@@ -1,31 +1,27 @@
 package com.skgdp.entity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import lombok.*;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "knowledge_gaps")
+@Document(collection = "knowledge_gaps")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class KnowledgeGap {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    private String id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "student_id", nullable = false)
-  private User student;
+    @DBRef
+    private User student;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "topic_id", nullable = false)
-  private Topic topic;
+    @DBRef
+    private Topic topic;
 
-  @Column(name = "weakness_score", nullable = false)
-  private Double weaknessScore;
+    private Double weaknessScore;
 
-  @Column(name = "detected_at", nullable = false)
-  private LocalDateTime detectedAt;
+    private LocalDateTime detectedAt;
 }

@@ -122,21 +122,11 @@ const Register: React.FC = () => {
         <div>
           <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 text-center">System Role</label>
           <div className="flex gap-4">
-            {[UserRole.STUDENT, UserRole.FACULTY].map(role => (
-              <button
-                key={role}
-                type="button"
-                onClick={() => setFormData({...formData, role})}
-                className={`flex-grow py-5 rounded-2xl font-black text-lg transition-all border-2 ${
-                  formData.role === role 
-                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-100' 
-                  : 'bg-white border-gray-100 text-gray-300 hover:border-indigo-200'
-                }`}
-              >
-                {role === UserRole.STUDENT ? 'Student Learner' : 'Faculty Mentor'}
-              </button>
-            ))}
+            <div className="flex-grow py-5 rounded-2xl font-black text-lg bg-indigo-600 border-2 border-indigo-600 text-white shadow-xl shadow-indigo-100 text-center">
+              Student Learner
+            </div>
           </div>
+          <p className="text-xs text-gray-400 text-center mt-2">Faculty accounts are created by administrators</p>
         </div>
 
         <button 

@@ -1,46 +1,37 @@
 package com.skgdp.entity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import lombok.*;
 
-@Entity
-@Table(name = "questions")
+@Document(collection = "questions")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Question {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    private String id;
 
-  @Column(columnDefinition = "TEXT", nullable = false)
-  private String content;
+    private String content;
 
-  @Column(name = "option_a", nullable = false)
-  private String optionA;
+    private String optionA;
 
-  @Column(name = "option_b", nullable = false)
-  private String optionB;
+    private String optionB;
 
-  @Column(name = "option_c", nullable = false)
-  private String optionC;
+    private String optionC;
 
-  @Column(name = "option_d", nullable = false)
-  private String optionD;
+    private String optionD;
 
-  @Column(name = "correct_option", nullable = false)
-  private String correctOption;
+    private String correctOption;
 
-  @Enumerated(EnumType.STRING)
-  @Column(nullable = false)
-  private Difficulty difficulty;
+    private Difficulty difficulty;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "topic_id", nullable = false)
-  private Topic topic;
+    @DBRef
+    private Topic topic;
 
-  public enum Difficulty {
-    EASY, MEDIUM, HARD
-  }
+    public enum Difficulty {
+        EASY, MEDIUM, HARD
+    }
 }

@@ -36,21 +36,56 @@ export const authAPI = {
 // Courses API
 export const coursesAPI = {
   getAll: () => fetchAPI<CourseResponse[]>('/courses'),
-  getById: (id: number) => fetchAPI<CourseResponse>(`/courses/${id}`),
+  getById: (id: string) => fetchAPI<CourseResponse>(`/courses/${id}`),
+  
+  create: (data: CourseCreateData) =>
+    fetchAPI<CourseResponse>('/courses', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  update: (id: string, data: CourseCreateData) =>
+    fetchAPI<CourseResponse>(`/courses/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  
+  delete: (id: string) =>
+    fetchAPI<{ message: string }>(`/courses/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 // Topics API
 export const topicsAPI = {
   getAll: () => fetchAPI<TopicResponse[]>('/topics'),
-  getByCourse: (courseId: number) => fetchAPI<TopicResponse[]>(`/topics/course/${courseId}`),
-  getById: (id: number) => fetchAPI<TopicResponse>(`/topics/${id}`),
+  getByCourse: (courseId: string) => fetchAPI<TopicResponse[]>(`/topics/course/${courseId}`),
+  getById: (id: string) => fetchAPI<TopicResponse>(`/topics/${id}`),
 };
 
 // Questions API
 export const questionsAPI = {
   getAll: () => fetchAPI<QuestionResponse[]>('/questions'),
-  getByTopic: (topicId: number) => fetchAPI<QuestionResponse[]>(`/questions/topic/${topicId}`),
-  getByCourse: (courseId: number) => fetchAPI<QuestionResponse[]>(`/questions/course/${courseId}`),
+  getByTopic: (topicId: string) => fetchAPI<QuestionResponse[]>(`/questions/topic/${topicId}`),
+  getByCourse: (courseId: string) => fetchAPI<QuestionResponse[]>(`/questions/course/${courseId}`),
+  getById: (id: string) => fetchAPI<QuestionResponse>(`/questions/${id}`),
+  
+  create: (data: QuestionCreateData) =>
+    fetchAPI<QuestionResponse>('/questions', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  
+  update: (id: string, data: QuestionCreateData) =>
+    fetchAPI<QuestionResponse>(`/questions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  
+  delete: (id: string) =>
+    fetchAPI<{ message: string }>(`/questions/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 // Assessment API
@@ -61,25 +96,25 @@ export const assessmentAPI = {
       body: JSON.stringify(data),
     }),
   
-  getGaps: (studentId: number) => 
+  getGaps: (studentId: string) => 
     fetchAPI<GapResponse[]>(`/assessments/gaps/${studentId}`),
 };
 
 // Assignments API
 export const assignmentsAPI = {
-  assign: (topicId: number, studentIds: number[], facultyId: number) =>
+  assign: (topicId: string, studentIds: string[], facultyId: string) =>
     fetchAPI<AssignmentResponse[]>('/assignments/assign', {
       method: 'POST',
       body: JSON.stringify({ topicId, studentIds, facultyId }),
     }),
   
-  getByStudent: (studentId: number) =>
+  getByStudent: (studentId: string) =>
     fetchAPI<AssignmentResponse[]>(`/assignments/student/${studentId}`),
   
-  getPending: (studentId: number) =>
+  getPending: (studentId: string) =>
     fetchAPI<AssignmentResponse[]>(`/assignments/student/${studentId}/pending`),
   
-  complete: (topicId: number, studentId: number) =>
+  complete: (topicId: string, studentId: string) =>
     fetchAPI<{message: string}>('/assignments/complete', {
       method: 'PUT',
       body: JSON.stringify({ topicId, studentId }),
@@ -91,18 +126,18 @@ export const usersAPI = {
   getAll: () => fetchAPI<UserResponse[]>('/users'),
   getStudents: () => fetchAPI<UserResponse[]>('/users/students'),
   getFaculty: () => fetchAPI<UserResponse[]>('/users/faculty'),
-  getById: (id: number) => fetchAPI<UserResponse>(`/users/${id}`),
+  getById: (id: string) => fetchAPI<UserResponse>(`/users/${id}`),
 };
 
 // Recommendations API
 export const recommendationsAPI = {
   getAll: () => fetchAPI<RecommendationResponse[]>('/recommendations'),
-  getByTopic: (topicId: number) => fetchAPI<RecommendationResponse[]>(`/recommendations/topic/${topicId}`),
+  getByTopic: (topicId: string) => fetchAPI<RecommendationResponse[]>(`/recommendations/topic/${topicId}`),
 };
 
 // Response types (matching backend DTOs)
 export interface UserResponse {
-  id: number;
+  id: string;
   email: string;
   fullName: string;
   rollNumber: string;
@@ -119,22 +154,29 @@ export interface RegisterData {
 }
 
 export interface CourseResponse {
-  id: number;
+  id: string;
   title: string;
   description: string;
   code: string;
-  facultyId: number;
+  facultyId: string;
+}
+
+export interface CourseCreateData {
+  title: string;
+  description: string;
+  code: string;
+  facultyId?: string;
 }
 
 export interface TopicResponse {
-  id: number;
+  id: string;
   name: string;
-  courseId: number;
+  courseId: string;
 }
 
 export interface QuestionResponse {
-  id: number;
-  topicId: number;
+  id: string;
+  topicId: string;
   content: string;
   optionA: string;
   optionB: string;
@@ -144,10 +186,21 @@ export interface QuestionResponse {
   difficulty: string;
 }
 
+export interface QuestionCreateData {
+  topicId: string;
+  content: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctOption: string;
+  difficulty: string;
+}
+
 export interface AssessmentSubmission {
-  courseId: number;
-  studentId: number;
-  answers: { questionId: number; selectedOption: string }[];
+  courseId: string;
+  studentId: string;
+  answers: { questionId: string; selectedOption: string }[];
 }
 
 export interface AssessmentResultResponse {
@@ -155,7 +208,7 @@ export interface AssessmentResultResponse {
   maxScore: number;
   percentage: number;
   breakdown: {
-    topicId: number;
+    topicId: string;
     topicName: string;
     correct: number;
     total: number;
@@ -166,25 +219,25 @@ export interface AssessmentResultResponse {
 }
 
 export interface GapResponse {
-  id: number;
-  studentId: number;
-  topicId: number;
+  id: string;
+  studentId: string;
+  topicId: string;
   weaknessScore: number;
   detectedAt: string;
 }
 
 export interface AssignmentResponse {
-  id: number;
-  topicId: number;
-  studentId: number;
-  assignedBy: number;
+  id: string;
+  topicId: string;
+  studentId: string;
+  assignedBy: string;
   assignedAt: string;
   status: string;
 }
 
 export interface RecommendationResponse {
-  id: number;
-  topicId: number;
+  id: string;
+  topicId: string;
   url: string;
   description: string;
   type: string;

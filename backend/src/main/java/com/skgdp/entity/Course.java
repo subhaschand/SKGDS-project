@@ -1,29 +1,27 @@
 package com.skgdp.entity;
 
-import jakarta.persistence.*;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
+import org.springframework.data.mongodb.core.index.Indexed;
 import lombok.*;
 
-@Entity
-@Table(name = "courses")
+@Document(collection = "courses")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Course {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    private String id;
 
-  @Column(nullable = false)
-  private String title;
+    private String title;
 
-  @Column(columnDefinition = "TEXT")
-  private String description;
+    private String description;
 
-  @Column(unique = true, nullable = false)
-  private String code;
+    @Indexed(unique = true)
+    private String code;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "faculty_id")
-  private User faculty;
+    @DBRef
+    private User faculty;
 }

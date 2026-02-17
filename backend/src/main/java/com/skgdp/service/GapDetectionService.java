@@ -32,11 +32,11 @@ public class GapDetectionService {
 
     // Get topics for this course
     List<Topic> courseTopics = topicRepo.findByCourseId(submission.getCourseId());
-    Map<Long, Topic> topicMap = courseTopics.stream()
+    Map<String, Topic> topicMap = courseTopics.stream()
         .collect(Collectors.toMap(Topic::getId, t -> t));
 
     // Track per-topic performance
-    Map<Long, List<Boolean>> topicPerformance = new HashMap<>();
+    Map<String, List<Boolean>> topicPerformance = new HashMap<>();
     courseTopics.forEach(t -> topicPerformance.put(t.getId(), new ArrayList<>()));
 
     int totalCorrect = 0;
@@ -70,7 +70,7 @@ public class GapDetectionService {
     // Build topic breakdown and detect gaps
     List<AssessmentResultDTO.TopicBreakdown> breakdown = new ArrayList<>();
     List<AssessmentResultDTO.GapDTO> gaps = new ArrayList<>();
-    List<Long> gapTopicIds = new ArrayList<>();
+    List<String> gapTopicIds = new ArrayList<>();
 
     for (Topic topic : courseTopics) {
       List<Boolean> results = topicPerformance.get(topic.getId());
@@ -135,7 +135,7 @@ public class GapDetectionService {
         .build();
   }
 
-  public List<AssessmentResultDTO.GapDTO> getStudentGaps(Long studentId) {
+  public List<AssessmentResultDTO.GapDTO> getStudentGaps(String studentId) {
     List<KnowledgeGap> gaps = gapRepo.findByStudentId(studentId);
     return gaps.stream()
         .map(g -> AssessmentResultDTO.GapDTO.builder()

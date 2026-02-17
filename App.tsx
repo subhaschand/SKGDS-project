@@ -15,8 +15,8 @@ interface AuthContextType {
   login: (user: User) => void;
   logout: () => void;
   assignments: Assignment[];
-  assignTest: (topicId: number, studentIds: string[]) => void;
-  completeAssignment: (topicId: number) => void;
+  assignTest: (topicId: string, studentIds: string[]) => void;
+  completeAssignment: (topicId: string) => void;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -53,9 +53,9 @@ const App: React.FC = () => {
     localStorage.removeItem('skgdp_current_session');
   };
 
-  const assignTest = (topicId: number, studentIds: string[]) => {
+  const assignTest = (topicId: string, studentIds: string[]) => {
     const newAssignments: Assignment[] = studentIds.map(sid => ({
-      id: Date.now() + Math.random(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       topicId,
       studentId: sid,
       assignedBy: user?.id || '0',
@@ -65,7 +65,7 @@ const App: React.FC = () => {
     setAssignments(prev => [...prev, ...newAssignments]);
   };
 
-  const completeAssignment = (topicId: number) => {
+  const completeAssignment = (topicId: string) => {
     setAssignments(prev => prev.map(a => 
       (a.topicId === topicId && a.studentId === user?.id) 
       ? { ...a, status: 'COMPLETED' } 

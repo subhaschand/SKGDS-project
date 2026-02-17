@@ -8,10 +8,10 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class AssignmentDTO {
-  private Long id;
-  private Long topicId;
-  private Long studentId;
-  private Long assignedBy;
+  private String id;
+  private String topicId;
+  private String studentId;
+  private String assignedBy;
   private String assignedAt;
   private String status;
 
