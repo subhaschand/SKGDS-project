@@ -14,6 +14,7 @@ public class UserDTO {
   private String rollNumber;
   private String role;
   private String avatar;
+  private boolean active;
 
   public static UserDTO fromEntity(User user) {
     return UserDTO.builder()
@@ -23,6 +24,7 @@ public class UserDTO {
         .rollNumber(user.getRollNumber())
         .role(user.getRole().name())
         .avatar(user.getAvatar())
+        .active(user.isActive())
         .build();
   }
 }

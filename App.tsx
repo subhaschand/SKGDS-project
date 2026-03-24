@@ -9,6 +9,11 @@ import FacultyDashboard from './components/FacultyDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import Login from './components/Login';
 import Register from './components/Register';
+import PracticeRepositoryBank from './components/PracticeRepositoryBank';
+import MCQPractice from './components/MCQPractice';
+import AssessmentResultsPage from './components/AssessmentResultsPage';
+import RepositoryManagementPage from './components/RepositoryManagementPage';
+import ErrorBoundary from './components/ErrorBoundary';
 
 interface AuthContextType {
   user: User | null;
@@ -74,11 +79,12 @@ const App: React.FC = () => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, assignments, assignTest, completeAssignment }}>
-      <Router>
-        <div className="min-h-screen flex flex-col bg-gray-50/50">
-          <Navbar />
-          <main className="flex-grow container mx-auto px-4 py-8">
+    <ErrorBoundary>
+      <AuthContext.Provider value={{ user, login, logout, assignments, assignTest, completeAssignment }}>
+        <Router>
+          <div className="min-h-screen flex flex-col bg-gray-50/50">
+            <Navbar />
+            <main className="flex-grow container mx-auto px-4 py-8">
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
@@ -95,15 +101,36 @@ const App: React.FC = () => {
                   <AssessmentView />
                 </ProtectedRoute>
               } />
+              <Route path="/practice-bank" element={
+                <ProtectedRoute>
+                  {user && <PracticeRepositoryBank user={{ id: user.id, name: user.fullName, role: user.role }} />}
+                </ProtectedRoute>
+              } />
+              <Route path="/mcq-practice/:topicId" element={
+                <ProtectedRoute>
+                  <MCQPractice />
+                </ProtectedRoute>
+              } />
+              <Route path="/assessment-results" element={
+                <ProtectedRoute>
+                  <AssessmentResultsPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/repository-management" element={
+                <ProtectedRoute>
+                  <RepositoryManagementPage />
+                </ProtectedRoute>
+              } />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>
-          <footer className="bg-white border-t py-8 text-center text-gray-400 text-xs font-bold uppercase tracking-widest">
-            &copy; 2024 SKGDP • Knowledge Intelligence Platform
-          </footer>
-        </div>
-      </Router>
-    </AuthContext.Provider>
+            <footer className="bg-white border-t py-8 text-center text-gray-400 text-xs font-bold uppercase tracking-widest">
+              &copy; 2024 SKGDP • Knowledge Intelligence Platform
+            </footer>
+          </div>
+        </Router>
+      </AuthContext.Provider>
+    </ErrorBoundary>
   );
 };
 

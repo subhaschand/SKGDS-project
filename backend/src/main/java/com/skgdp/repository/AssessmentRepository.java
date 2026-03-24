@@ -11,9 +11,11 @@ import java.util.List;
 public interface AssessmentRepository extends MongoRepository<Assessment, String> {
     List<Assessment> findByStudent(User student);
 
-    List<Assessment> findByStudentId(String studentId);
+    List<Assessment> findByStudent_Id(String studentId);
 
     List<Assessment> findByCourse(Course course);
 
     List<Assessment> findByStudentAndCourse(User student, Course course);
+
+    List<Assessment> findAllByOrderBySubmissionDateDesc();
 }

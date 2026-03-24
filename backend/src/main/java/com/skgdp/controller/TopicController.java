@@ -1,8 +1,11 @@
 package com.skgdp.controller;
 
 import com.skgdp.dto.TopicDTO;
+import com.skgdp.entity.Topic;
+import com.skgdp.repository.CourseRepository;
 import com.skgdp.repository.TopicRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,9 +15,11 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/topics")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*")
 public class TopicController {
 
   private final TopicRepository topicRepo;
+  private final CourseRepository courseRepo;
 
   @GetMapping
   public ResponseEntity<List<TopicDTO>> getAllTopics() {
@@ -38,5 +43,19 @@ public class TopicController {
         .map(TopicDTO::fromEntity)
         .map(ResponseEntity::ok)
         .orElse(ResponseEntity.notFound().build());
+  }
+
+  @PostMapping
+  public ResponseEntity<TopicDTO> createTopic(@RequestBody TopicDTO dto) {
+    return courseRepo.findById(dto.getCourseId())
+        .map(course -> {
+          Topic topic = Topic.builder()
+              .name(dto.getName())
+              .course(course)
+              .build();
+          Topic saved = topicRepo.save(topic);
+          return ResponseEntity.status(HttpStatus.CREATED).body(TopicDTO.fromEntity(saved));
+        })
+        .orElse(ResponseEntity.badRequest().build());
   }
 }

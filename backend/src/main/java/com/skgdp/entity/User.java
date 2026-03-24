@@ -28,6 +28,9 @@ public class User {
 
     private String avatar;
 
+    @Builder.Default
+    private boolean active = true;
+
     public enum Role {
         STUDENT, FACULTY, ADMIN
     }

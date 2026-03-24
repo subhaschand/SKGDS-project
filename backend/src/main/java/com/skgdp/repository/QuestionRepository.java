@@ -13,6 +13,6 @@ public interface QuestionRepository extends MongoRepository<Question, String> {
     List<Question> findByTopicId(String topicId);
 
     List<Question> findByTopicIdIn(List<String> topicIds);
-    
+
     void deleteByTopicId(String topicId);
 }

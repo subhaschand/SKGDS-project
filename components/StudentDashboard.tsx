@@ -3,10 +3,15 @@ import React, { useContext, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from 'recharts';
 import { COURSES, TOPICS } from '../services/mockData';
-import { coursesAPI, topicsAPI, assignmentsAPI } from '../services/api';
+import { coursesAPI, topicsAPI, assignmentsAPI, practiceQuestionsAPI, PracticeQuestionResponse } from '../services/api';
 import { AuthContext } from '../App';
 import { GoogleGenAI } from "@google/genai";
 import { Course, Topic } from '../types';
+
+// Read API keys from Vite environment variables.
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 // Analytics Data
 const PERFORMANCE_TREND = [
@@ -31,16 +36,21 @@ const StudentDashboard: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [roadmap, setRoadmap] = useState<string | null>(null);
   const [showRoadmap, setShowRoadmap] = useState(false);
+  const [showTopicInput, setShowTopicInput] = useState(false);
+  const [roadmapTopic, setRoadmapTopic] = useState('');
+  const [roadmapError, setRoadmapError] = useState<string | null>(null);
   const [courses, setCourses] = useState<Course[]>(COURSES);
   const [topics, setTopics] = useState<Topic[]>(TOPICS);
+  const [mcqQuestions, setMcqQuestions] = useState<PracticeQuestionResponse[]>([]);
   
   // Fetch data from API on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [coursesData, topicsData] = await Promise.all([
+        const [coursesData, topicsData, questionsData] = await Promise.all([
           coursesAPI.getAll(),
           topicsAPI.getAll(),
+          practiceQuestionsAPI.getAll(),
         ]);
         
         setCourses(coursesData.map(c => ({
@@ -56,6 +66,9 @@ const StudentDashboard: React.FC = () => {
           name: t.name,
           courseId: t.courseId,
         })));
+        
+        // Filter only MCQ questions
+        setMcqQuestions(questionsData.filter(q => q.type === 'MCQ'));
       } catch (error) {
         console.error('Failed to fetch data:', error);
         // Keep mock data as fallback
@@ -68,38 +81,152 @@ const StudentDashboard: React.FC = () => {
   // Persistence logic ensures these are fetched from global state
   const myAssignments = assignments.filter(a => a.studentId === user?.id && a.status === 'PENDING');
 
+  // Groq API helper function
+  const callGroqAPI = async (prompt: string): Promise<string> => {
+    const response = await fetch(GROQ_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are the SKGDP AI Architect. You provide clear, concise, and technically rigorous learning roadmaps for Computer Science students.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 4096,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Groq API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+    }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || '';
+  };
+
+  // Open topic input modal
+  const handleExploreRoadmapClick = () => {
+    setShowTopicInput(true);
+    setRoadmapTopic('');
+    setRoadmapError(null);
+  };
+
+  // Generate roadmap for the selected topic
+  const handleGenerateRoadmap = async () => {
+    if (!roadmapTopic.trim()) {
+      setRoadmapError('Please enter a topic to generate a roadmap.');
+      return;
+    }
+
+    setShowTopicInput(false);
+    setIsGenerating(true);
+    setShowRoadmap(true);
+    setRoadmapError(null);
+    
+    const prompt = `
+      As an expert AI Academic Coach, generate a high-impact learning roadmap for a student named ${user?.fullName}.
+      
+      Topic to Master: ${roadmapTopic}
+      Target: Complete mastery from beginner to expert level.
+      
+      Generate a comprehensive 5-7 step sequential roadmap. For each step, provide:
+      1. **Step Title** - A clear, actionable title
+      2. **Key Concepts** - Specific concepts to understand (bullet points)
+      3. **Practical Exercise** - A hands-on mini-project or exercise
+      4. **Resources** - Specific websites/tutorials to use (geeksforgeeks, w3schools, youtube, leetcode, etc.)
+      5. **Estimated Time** - Realistic study duration
+      
+      Also include:
+      - Prerequisites (if any)
+      - Common pitfalls to avoid
+      - How to verify mastery at each step
+      
+      Format the output with clear headers, bullet points, and emojis for visual appeal. 
+      Make it encouraging, professional, and highly actionable.
+    `;
+
+    try {
+      let responseText = '';
+      
+      // Try Gemini first
+      try {
+        const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.0-flash',
+          contents: prompt,
+          config: {
+            systemInstruction: "You are the SKGDP AI Architect. You provide clear, concise, and technically rigorous learning roadmaps for Computer Science students.",
+            temperature: 0.7,
+          },
+        });
+        responseText = response.text || '';
+      } catch (geminiError: any) {
+        console.log('Gemini failed, trying Groq...', geminiError);
+        // Fallback to Groq
+        responseText = await callGroqAPI(prompt);
+      }
+
+      setRoadmap(responseText || "Failed to generate roadmap. Please try again.");
+    } catch (error) {
+      console.error("AI Generation Error:", error);
+      setRoadmap("Our AI systems are currently unavailable. Please try again in a moment.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Legacy function for regeneration
   const handleExploreRoadmap = async () => {
     setIsGenerating(true);
     setShowRoadmap(true);
     
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const prompt = `
         As an expert AI Academic Coach, generate a high-impact learning roadmap for a student named ${user?.fullName}.
-        Current Status:
-        - Overall Proficiency: 72%
-        - Primary Knowledge Gap: SQL Normalization (1NF, 2NF, 3NF, BCNF)
-        - Target Mastery: 100%
         
-        Generate a 5-step sequential roadmap. For each step, provide:
-        1. A bold Title
-        2. Key concepts to focus on
-        3. A practical mini-project or exercise
-        4. Estimated study time
+        Topic to Master: ${roadmapTopic || 'SQL Normalization (1NF, 2NF, 3NF, BCNF)'}
+        Target: Complete mastery from beginner to expert level.
         
-        Format the output clearly with headers and bullet points. Keep it professional, encouraging, and highly technical.
+        Generate a comprehensive 5-7 step sequential roadmap. For each step, provide:
+        1. **Step Title** - A clear, actionable title
+        2. **Key Concepts** - Specific concepts to understand (bullet points)
+        3. **Practical Exercise** - A hands-on mini-project or exercise
+        4. **Resources** - Specific websites/tutorials to use
+        5. **Estimated Time** - Realistic study duration
+        
+        Format the output with clear headers, bullet points, and emojis for visual appeal.
       `;
+      
+      let responseText = '';
+      
+      try {
+        const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.0-flash',
+          contents: prompt,
+          config: {
+            systemInstruction: "You are the SKGDP AI Architect. You provide clear, concise, and technically rigorous learning roadmaps for Computer Science students.",
+            temperature: 0.7,
+          },
+        });
+        responseText = response.text || '';
+      } catch (geminiError) {
+        console.log('Gemini failed, trying Groq...', geminiError);
+        responseText = await callGroqAPI(prompt);
+      }
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-        config: {
-          systemInstruction: "You are the SKGDP AI Architect. You provide clear, concise, and technically rigorous learning roadmaps for Computer Science students.",
-          temperature: 0.7,
-        },
-      });
-
-      setRoadmap(response.text || "Failed to generate roadmap. Please try again.");
+      setRoadmap(responseText || "Failed to generate roadmap. Please try again.");
     } catch (error) {
       console.error("AI Generation Error:", error);
       setRoadmap("Our AI systems are currently recalibrating. Please try again in a moment.");
@@ -271,7 +398,7 @@ const StudentDashboard: React.FC = () => {
               Our analyzer detected "SQL Normalization" as a critical deficiency. Master this topic to improve overall proficiency by 12%.
             </p>
             <button 
-              onClick={handleExploreRoadmap}
+              onClick={handleExploreRoadmapClick}
               className="bg-white text-indigo-900 px-12 py-5 rounded-3xl font-black text-xl hover:bg-blue-50 transition-all shadow-2xl shadow-indigo-950/20 active:scale-95 flex items-center gap-4"
             >
               <i className="fas fa-rocket text-indigo-400"></i>
@@ -294,6 +421,101 @@ const StudentDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* TOPIC INPUT MODAL */}
+      {showTopicInput && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
+          <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-xl" onClick={() => setShowTopicInput(false)}></div>
+          <div className="relative bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden border border-indigo-100">
+            <div className="p-10 md:p-14 border-b bg-gradient-to-br from-indigo-50 to-blue-50">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-200">
+                      <i className="fas fa-road text-2xl"></i>
+                    </div>
+                    <h2 className="text-3xl font-black text-gray-900 tracking-tighter">Create Your Roadmap</h2>
+                  </div>
+                  <p className="text-gray-500 font-medium text-lg">Enter any topic you want to master, and our AI will generate a personalized learning path.</p>
+                </div>
+                <button 
+                  onClick={() => setShowTopicInput(false)}
+                  className="w-12 h-12 rounded-2xl bg-white border-2 border-gray-100 text-gray-400 hover:text-red-500 transition-all flex items-center justify-center shadow-sm shrink-0"
+                >
+                  <i className="fas fa-times text-xl"></i>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-10 md:p-14 space-y-8">
+              {/* Topic Suggestions */}
+              <div className="flex flex-wrap gap-3">
+                <span className="text-sm font-bold text-gray-400 mr-2">Quick picks:</span>
+                {['Data Structures', 'SQL & Databases', 'React.js', 'Machine Learning', 'System Design', 'Python'].map(suggestion => (
+                  <button
+                    key={suggestion}
+                    onClick={() => setRoadmapTopic(suggestion)}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                      roadmapTopic === suggestion 
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-indigo-100 hover:text-indigo-600'
+                    }`}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+
+              {/* Topic Input */}
+              <div className="space-y-3">
+                <label className="block text-sm font-black text-gray-700 uppercase tracking-wider">
+                  What topic do you want to learn?
+                </label>
+                <input
+                  type="text"
+                  value={roadmapTopic}
+                  onChange={(e) => {
+                    setRoadmapTopic(e.target.value);
+                    setRoadmapError(null);
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleGenerateRoadmap()}
+                  placeholder="e.g., Binary Search Trees, REST APIs, Docker, etc."
+                  className="w-full px-8 py-5 text-lg font-medium border-2 border-gray-200 rounded-2xl focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all placeholder:text-gray-300"
+                  autoFocus
+                />
+                {roadmapError && (
+                  <p className="text-red-500 font-bold text-sm flex items-center gap-2">
+                    <i className="fas fa-exclamation-circle"></i>
+                    {roadmapError}
+                  </p>
+                )}
+              </div>
+
+              {/* Generate Button */}
+              <div className="flex gap-4 pt-4">
+                <button
+                  onClick={() => setShowTopicInput(false)}
+                  className="px-8 py-5 rounded-2xl bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleGenerateRoadmap}
+                  disabled={!roadmapTopic.trim()}
+                  className={`flex-1 px-8 py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all ${
+                    roadmapTopic.trim()
+                      ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-200 hover:bg-indigo-700 active:scale-95'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  <i className="fas fa-magic"></i>
+                  Generate AI Roadmap
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* AI ROADMAP MODAL */}
       {showRoadmap && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
@@ -302,7 +524,9 @@ const StudentDashboard: React.FC = () => {
             <div className="p-10 md:p-14 border-b shrink-0 flex justify-between items-center bg-indigo-50/50">
               <div>
                 <h2 className="text-4xl font-black text-gray-900 tracking-tighter">AI Learning Roadmap</h2>
-                <p className="text-indigo-600 font-bold uppercase tracking-widest text-sm mt-1">Personalized Path for {user?.fullName}</p>
+                <p className="text-indigo-600 font-bold uppercase tracking-widest text-sm mt-1">
+                  {roadmapTopic ? `Mastering: ${roadmapTopic}` : `Personalized Path for ${user?.fullName}`}
+                </p>
               </div>
               <button 
                 onClick={() => setShowRoadmap(false)}
@@ -322,8 +546,8 @@ const StudentDashboard: React.FC = () => {
                     </div>
                   </div>
                   <div className="text-center">
-                    <h3 className="text-2xl font-black text-gray-900">Architecting your path...</h3>
-                    <p className="text-gray-400 font-bold mt-2">Gemini is analyzing your gap data and synthesizing resources.</p>
+                    <h3 className="text-2xl font-black text-gray-900">Architecting your {roadmapTopic || 'learning'} path...</h3>
+                    <p className="text-gray-400 font-bold mt-2">AI is analyzing resources and creating your personalized roadmap.</p>
                   </div>
                 </div>
               ) : (
@@ -334,7 +558,7 @@ const StudentDashboard: React.FC = () => {
                     </div>
                     <div>
                       <h4 className="text-lg font-black text-indigo-900 mb-1 tracking-tight">AI Analysis Complete</h4>
-                      <p className="text-indigo-700/70 font-bold text-sm leading-relaxed">This roadmap is specifically tuned to bridge your deficiency in <span className="text-indigo-900">SQL Normalization</span>, aiming to elevate your competency from foundational to expert level.</p>
+                      <p className="text-indigo-700/70 font-bold text-sm leading-relaxed">This roadmap is specifically designed to help you master <span className="text-indigo-900">{roadmapTopic || 'your selected topic'}</span>, taking you from fundamentals to expert level.</p>
                     </div>
                   </div>
                   <div className="whitespace-pre-wrap font-medium text-gray-700 text-lg leading-relaxed">
@@ -353,10 +577,19 @@ const StudentDashboard: React.FC = () => {
                   Confirm & Start Roadmap
                 </button>
                 <button 
-                  onClick={() => handleExploreRoadmap()}
-                  className="px-12 py-6 rounded-[2rem] bg-white border-2 border-indigo-100 text-indigo-600 font-black text-lg hover:bg-indigo-50 transition-all"
+                  onClick={() => handleGenerateRoadmap()}
+                  className="px-8 py-6 rounded-[2rem] bg-white border-2 border-indigo-100 text-indigo-600 font-black text-lg hover:bg-indigo-50 transition-all"
                 >
                   <i className="fas fa-sync-alt mr-2"></i> Regenerate
+                </button>
+                <button 
+                  onClick={() => {
+                    setShowRoadmap(false);
+                    setShowTopicInput(true);
+                  }}
+                  className="px-8 py-6 rounded-[2rem] bg-white border-2 border-indigo-100 text-gray-600 font-black text-lg hover:bg-gray-100 transition-all"
+                >
+                  <i className="fas fa-exchange-alt mr-2"></i> Change Topic
                 </button>
               </div>
             )}
@@ -364,41 +597,67 @@ const StudentDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* PRACTICE LIBRARY */}
+      {/* PRACTICE LIBRARY - MCQ TOPICS */}
       <section className="space-y-8">
         <div className="flex items-center gap-4 px-4">
-          <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
-            <i className="fas fa-book-open"></i>
+          <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center">
+            <i className="fas fa-question-circle"></i>
           </div>
-          <h2 className="text-3xl font-black text-gray-900 tracking-tight">Practice Repositories</h2>
+          <h2 className="text-3xl font-black text-gray-900 tracking-tight">MCQ Practice Repository</h2>
           <div className="flex-grow h-px bg-gray-100 ml-4"></div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {courses.map(course => (
-            <div key={course.id} className="bg-white border-2 border-gray-100 rounded-[3rem] overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-500 group">
-              <div className="p-10">
-                <div className="flex justify-between items-start mb-8">
-                  <div className="px-5 py-2 bg-gray-50 text-blue-600 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl border border-gray-100">{course.code}</div>
-                  <div className="w-12 h-12 rounded-2xl bg-gray-50 text-gray-300 flex items-center justify-center transform group-hover:rotate-12 transition-transform">
-                    <i className="fas fa-database text-2xl"></i>
+          {topics.map(topic => {
+            const topicMcqCount = mcqQuestions.filter(q => q.topicId === topic.id).length;
+            const course = courses.find(c => c.id === topic.courseId);
+            
+            return (
+              <div key={topic.id} className="bg-white border-2 border-gray-100 rounded-[3rem] overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-500 group">
+                <div className="p-10">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="px-5 py-2 bg-purple-50 text-purple-600 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl border border-purple-100">
+                      {course?.code || 'MCQ'}
+                    </div>
+                    <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-400 flex items-center justify-center transform group-hover:rotate-12 transition-transform">
+                      <i className="fas fa-brain text-2xl"></i>
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-black mb-3 text-gray-800 tracking-tighter leading-tight">{topic.name}</h3>
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="flex items-center gap-2 text-gray-400">
+                      <i className="fas fa-list-ol"></i>
+                      <span className="font-bold">{topicMcqCount} Questions</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-400">
+                      <i className="fas fa-clock"></i>
+                      <span className="font-bold">~{Math.ceil(topicMcqCount * 1.5)} mins</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    {topicMcqCount > 0 ? (
+                      <Link 
+                        to={`/mcq-practice/${topic.id}`}
+                        className="flex-grow text-center bg-purple-600 text-white py-4 rounded-2xl font-black text-sm hover:bg-purple-700 transition-all shadow-lg shadow-purple-100"
+                      >
+                        <i className="fas fa-play mr-2"></i>
+                        Take Assessment
+                      </Link>
+                    ) : (
+                      <button 
+                        disabled
+                        className="flex-grow text-center bg-gray-200 text-gray-400 py-4 rounded-2xl font-black text-sm cursor-not-allowed"
+                      >
+                        No Questions Yet
+                      </button>
+                    )}
+                    <button className="w-14 h-14 rounded-2xl border-2 border-gray-100 flex items-center justify-center text-gray-300 hover:text-purple-600 hover:bg-purple-50 transition-all">
+                      <i className="fas fa-bookmark"></i>
+                    </button>
                   </div>
                 </div>
-                <h3 className="text-2xl font-black mb-3 text-gray-800 tracking-tighter leading-tight">{course.title}</h3>
-                <p className="text-gray-400 font-medium text-sm mb-12 line-clamp-2 leading-relaxed">{course.description}</p>
-                <div className="flex gap-4">
-                   <Link 
-                    to={`/assessment/${topics.find(t => t.courseId === course.id)?.id}`}
-                    className="flex-grow text-center bg-gray-900 text-white py-4 rounded-2xl font-black text-sm hover:bg-blue-600 transition-all shadow-lg shadow-gray-100"
-                  >
-                    Open Bank
-                  </Link>
-                  <button className="w-14 h-14 rounded-2xl border-2 border-gray-100 flex items-center justify-center text-gray-300 hover:text-blue-600 hover:bg-blue-50 transition-all">
-                    <i className="fas fa-bookmark"></i>
-                  </button>
-                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

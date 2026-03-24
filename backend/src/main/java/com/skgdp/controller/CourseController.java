@@ -47,14 +47,14 @@ public class CourseController {
     if (dto.getFacultyId() != null) {
       faculty = userRepo.findById(dto.getFacultyId()).orElse(null);
     }
-    
+
     Course course = Course.builder()
         .title(dto.getTitle())
         .description(dto.getDescription())
         .code(dto.getCode())
         .faculty(faculty)
         .build();
-    
+
     Course saved = courseRepo.save(course);
     return ResponseEntity.ok(CourseDTO.fromEntity(saved));
   }
@@ -80,13 +80,13 @@ public class CourseController {
     if (!courseRepo.existsById(id)) {
       return ResponseEntity.notFound().build();
     }
-    
+
     // Delete all topics and their questions for this course
     topicRepo.findByCourseId(id).forEach(topic -> {
       questionRepo.deleteByTopicId(topic.getId());
       topicRepo.delete(topic);
     });
-    
+
     courseRepo.deleteById(id);
     return ResponseEntity.ok(Map.of("message", "Course deleted successfully"));
   }
