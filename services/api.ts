@@ -1,4 +1,4 @@
-const API_BASE = ' https://beth-semipervious-lovie.ngrok-free.dev/api'; // Update with your actual backend URL
+const API_BASE = 'https://beth-semipervious-lovie.ngrok-free.dev/api'; // Update with your actual backend URL
 
 // Generic fetch helper
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {
