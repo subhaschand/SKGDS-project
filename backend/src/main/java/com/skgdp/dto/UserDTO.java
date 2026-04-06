@@ -1,0 +1,30 @@
+package com.skgdp.dto;
+
+import com.skgdp.entity.User;
+import lombok.*;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class UserDTO {
+  private String id;
+  private String email;
+  private String fullName;
+  private String rollNumber;
+  private String role;
+  private String avatar;
+  private boolean active;
+
+  public static UserDTO fromEntity(User user) {
+    return UserDTO.builder()
+        .id(user.getId())
+        .email(user.getEmail())
+        .fullName(user.getFullName())
+        .rollNumber(user.getRollNumber())
+        .role(user.getRole().name())
+        .avatar(user.getAvatar())
+        .active(user.isActive())
+        .build();
+  }
+}
